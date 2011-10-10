@@ -61,7 +61,7 @@ if [ ! -z "${BISCUITETC}" ]; then
 fi
 
 # busybox cpio lacks "-R" and "--quiet".
-${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id )
+${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id 1>/dev/null 2>/dev/null )
 if [ $? -ne 0 ]; then
     eval ${UMO}
     exit 6
@@ -78,7 +78,7 @@ elif [ ${EUID} -ne 0 ]; then
     OUT="tee ${TTY}"
 elif [ -x ${LOG} ]; then
     # busybox logger lacks "-i".
-    OUT="${LOG} -i -t ${NAM} -p ${FAC}.${LEV} -t ${NAM}"
+    OUT="${LOG} -t ${NAM} -p ${FAC}.${LEV}"
 elif [ -c ${CON} ]; then
     OUT="tee ${CON}"
 else
