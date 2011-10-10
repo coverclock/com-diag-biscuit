@@ -45,7 +45,7 @@ else
     UMO="rm -rf ${MNT}"
 fi
 
-trap "${UMO}; exit 4" 1 2 3 15
+trap "eval ${UMO}; exit 4" 1 2 3 15
 ${MOU}
 if [ $? -ne 0 ]; then
     rm -rf ${MNT}
@@ -63,12 +63,12 @@ fi
 # busybox cpio lacks "-R" and "--quiet".
 ${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id )
 if [ $? -ne 0 ]; then
-    ${UMO}
+    eval ${UMO}
     exit 6
 fi
 
 if [ ! -x ${MNT}/${NAM} ]; then
-    ${UMO}
+    eval ${UMO}
     exit 7
 fi
 
@@ -89,6 +89,6 @@ export PATH=${MNT}:${PATH}
 export LD_LIBRARY_PATH=${MNT}:${LD_LIBRARY_PATH}
 ${MNT}/${NAM} </dev/null 2>&1 | ${OUT} 1>/dev/null 2>/dev/null
 
-${UMO}
+eval ${UMO}
 
 exit 0
