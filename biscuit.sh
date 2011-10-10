@@ -60,7 +60,8 @@ if [ ! -z "${BISCUITETC}" ]; then
     ETC="${BISCUITETC}"
 fi
 
-${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id ${OWN} --quiet )
+# busybox cpio lacks "-R" and "--quiet".
+${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id )
 if [ $? -ne 0 ]; then
     ${UMO}
     exit 6
@@ -76,7 +77,8 @@ if [ -z "${EUID}" ]; then
 elif [ ${EUID} -ne 0 ]; then
     OUT="tee ${TTY}"
 elif [ -x ${LOG} ]; then
-    OUT="${LOG} -i -p ${FAC}.${LEV} -t ${NAM}"
+    # busybox logger lacks "-i".
+    OUT="${LOG} -i -t ${NAM} -p ${FAC}.${LEV} -t ${NAM}"
 elif [ -c ${CON} ]; then
     OUT="tee ${CON}"
 else
