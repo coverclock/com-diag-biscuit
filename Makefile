@@ -399,7 +399,7 @@ unittest3:	biscuit
 	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
 	rm -rf $$BISDIR
-	BISCUITBIN=$(BUILD_DIR)/bin BISCUITETC=$(HOST_DIR)/etc bash -x ./biscuit
+	BISCUITBIN=$(BUILD_DIR)/bin BISCUITETC=$(HOST_DIR)/etc ./biscuit
 	test -f ./biscuit-unittest3a.dat
 	test -f ./biscuit-unittest3b.dat
 

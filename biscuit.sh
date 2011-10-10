@@ -71,7 +71,9 @@ if [ ! -x ${MNT}/${NAM} ]; then
     exit 7
 fi
 
-if [ ! -z "${PS1}" ]; then
+if [ -z "${EUID}" ]; then
+    OUT="tee ${TTY}"
+elif [ ${EUID} -ne 0 ]; then
     OUT="tee ${TTY}"
 elif [ -x ${LOG} ]; then
     OUT="${LOG} -i -p ${FAC}.${LEV} -t ${NAM}"
