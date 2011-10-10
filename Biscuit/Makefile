@@ -17,35 +17,54 @@ HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
 # PARAMETERS
 ################################################################################
 
+# We adopt the GNU nomenclature here: BUILD is the server side on which the
+# software is all built and biscuit binary packages are encrypted. HOST is the
+# target side on which the biscuit binary packages are decrypted and executed.
+
+BUILD=i686-pc-linux-gnu
+HOST=arm-linux-gnu
+
 # The intent here is to choose EIGamal asymetric key encryption (which is not
 # patent encumbered) of 1024 bits in length (to accomodate slower embedded
-# systems) with no expiration date. You can change the name, recipient, comment,
-# and passphrase files to be anything you want, and use different ones for
-# different projects or versions of the same project. That prevents a biscuit
-# for project A or version N from being used on project B or version N+1.
+# systems) with no expiration date. But creating an expiration date for the
+# HOST side would be a possible strategy too, resulting in an embedded system
+# that could not run biscuits after a certain date.
 
-HOST_NAME_FILE=host_name.txt
-HOST_EMAIL_FILE=host_email.txt
-HOST_COMMENT_FILE=host_comment.txt
-HOST_PASSPHRASE_FILE=host_passphrase.txt
 HOST_KEY_TYPE=DSA
 HOST_KEY_LENGTH=1024
 HOST_SUBKEY_TYPE=ELG-E
 HOST_SUBKEY_LENGTH=1024
 HOST_EXPIRATION_DATE=0
 
-BUILD_NAME_FILE=build_name.txt
-BUILD_EMAIL_FILE=build_email.txt
-BUILD_COMMENT_FILE=build_comment.txt
-BUILD_PASSPHRASE_FILE=build_passphrase.txt
 BUILD_KEY_TYPE=DSA
 BUILD_KEY_LENGTH=1024
 BUILD_SUBKEY_TYPE=ELG-E
 BUILD_SUBKEY_LENGTH=1024
 BUILD_EXPIRATION_DATE=0
 
+# You can (and should) use your own name, recipient, comment, and passphrase
+# files, and use different ones for different projects or versions of the same
+# project. That prevents a biscuit for project A or version N from being used
+# on project B or version N+1.
+
+HOST_NAME_FILE=host_name.txt
+HOST_EMAIL_FILE=host_email.txt
+HOST_COMMENT_FILE=host_comment.txt
+HOST_PASSPHRASE_FILE=host_passphrase.txt
+
+BUILD_NAME_FILE=build_name.txt
+BUILD_EMAIL_FILE=build_email.txt
+BUILD_COMMENT_FILE=build_comment.txt
+BUILD_PASSPHRASE_FILE=build_passphrase.txt
+
+# Set these for using the various utilities like encrypt, decrypt, and package.
+
+INPUTFILE=/dev/null
+OUTPUTFILE=/dev/null
+INPUTDIRECTORY=/dev/null
+
 ################################################################################
-# SERVER
+# PREREQUISITES
 ################################################################################
 
 TOOLCHAIN_DIR=/opt/arm-2011.03#https://sourcery.mentor.com/sgpp/lite/arm/portal/package8739/public/arm-none-linux-gnueabi/arm-2011.03-41-arm-none-linux-gnueabi-i686-pc-linux-gnu.tar.bz2
@@ -62,14 +81,8 @@ ARCH=arm
 # PROJECT
 ################################################################################
 
-# We adopt the GNU nomenclature here: BUILD is the server side on which the
-# software is all built and biscuit binary packages are encrypted. HOST is the
-# target side on which the biscuit binary packages are decrypted.
-
-BUILD=i686-pc-linux-gnu
-HOST=arm-linux-gnu
-
-PROJECT_DIR=$(HOME)/projects/$(PROJECT)
+CWD:=${shell pwd}
+PROJECT_DIR=${CWD}/project
 BUILD_DIR=$(PROJECT_DIR)/$(BUILD)
 HOST_DIR=$(PROJECT_DIR)/$(HOST)
 
@@ -199,14 +212,13 @@ TARGETS+=$(HOST_DIR)/etc
 
 $(HOST_DIR)/etc:
 	mkdir -p $(HOST_DIR)/etc
-	chmod 700 $(BUILD_DIR)/etc
+	chmod 700 $(HOST_DIR)/etc
 
 TARGETS+=$(HOST_DIR)/etc/pubring.gpg
 TARGETS+=$(HOST_DIR)/etc/pubring.gpg~
 TARGETS+=$(HOST_DIR)/etc/random_seed
 TARGETS+=$(HOST_DIR)/etc/secring.gpg
 TARGETS+=$(HOST_DIR)/etc/trustdb.gpg
-TARGETS+=$(HOST_DIR)/etc/passphrase.txt
 
 ARTIFACTS+=host.txt
 ARTIFACTS+=$(HOST_DIR)/etc/pubring.gpg
@@ -214,14 +226,12 @@ ARTIFACTS+=$(HOST_DIR)/etc/pubring.gpg~
 ARTIFACTS+=$(HOST_DIR)/etc/random_seed
 ARTIFACTS+=$(HOST_DIR)/etc/secring.gpg
 ARTIFACTS+=$(HOST_DIR)/etc/trustdb.gpg
-ARTIFACTS+=$(HOST_DIR)/etc/passphrase.txt
 
 HOST_ETC+=$(HOST_DIR)/etc/pubring.gpg
 HOST_ETC+=$(HOST_DIR)/etc/pubring.gpg~
 HOST_ETC+=$(HOST_DIR)/etc/random_seed
 HOST_ETC+=$(HOST_DIR)/etc/secring.gpg
 HOST_ETC+=$(HOST_DIR)/etc/trustdb.gpg
-HOST_ETC+=$(HOST_DIR)/etc/passphrase.txt
 
 host.txt:	$(HOST_NAME_FILE) $(HOST_EMAIL_FILE) $(HOST_COMMENT_FILE) $(HOST_PASSPHRASE_FILE) 
 	echo "Key-Type: $(HOST_KEY_TYPE)" > host.txt
@@ -235,10 +245,16 @@ host.txt:	$(HOST_NAME_FILE) $(HOST_EMAIL_FILE) $(HOST_COMMENT_FILE) $(HOST_PASSP
 	echo "Passphrase: $(shell cat $(HOST_PASSPHRASE_FILE))" >> host.txt
 	echo "%commit" >> host.txt
 
-$(HOST_DIR)/etc/pubring.gpg $(HOST_DIR)/etc/pubring.gpg~ $(HOST_DIR)/etc/random_seed $(HOST_DIR)/etc/secring.gpg $(HOST_DIR)/etc/trustdb.gpg:	$(BUILD_DIR)/bin/gpg $(HOST_DIR)/etc/passphrase.txt host.txt
+$(HOST_DIR)/etc/pubring.gpg $(HOST_DIR)/etc/pubring.gpg~ $(HOST_DIR)/etc/random_seed $(HOST_DIR)/etc/secring.gpg $(HOST_DIR)/etc/trustdb.gpg:	$(BUILD_DIR)/bin/gpg host.txt
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
 	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --gen-key < host.txt; \
 	kill $$PID
+
+TARGETS+=$(HOST_DIR)/etc/passphrase.txt
+
+ARTIFACTS+=$(HOST_DIR)/etc/passphrase.txt
+
+HOST_ETC+=$(HOST_DIR)/etc/passphrase.txt
 
 $(HOST_DIR)/etc/passphrase.txt:	$(HOST_PASSPHRASE_FILE)
 	touch $(HOST_DIR)/etc/passphrase.txt
@@ -286,15 +302,10 @@ build.txt:	$(BUILD_NAME_FILE) $(BUILD_EMAIL_FILE) $(BUILD_COMMENT_FILE) $(BUILD_
 	echo "Passphrase: $(shell cat $(BUILD_PASSPHRASE_FILE))" >> build.txt
 	echo "%commit" >> build.txt
 
-$(BUILD_DIR)/etc/pubring.gpg $(BUILD_DIR)/etc/pubring.gpg~ $(BUILD_DIR)/etc/secring.gpg $(BUILD_DIR)/etc/trustdb.gpg:	$(BUILD_DIR)/bin/gpg $(HOST_DIR)/etc/pubring.gpg $(HOST_DIR)/etc/pubring.gpg~ $(HOST_DIR)/etc/random_seed $(HOST_DIR)/etc/secring.gpg $(HOST_DIR)/etc/trustdb.gpg $(BUILD_DIR)/etc/recipient.txt build.txt
+$(BUILD_DIR)/etc/pubring.gpg $(BUILD_DIR)/etc/pubring.gpg~ $(BUILD_DIR)/etc/secring.gpg $(BUILD_DIR)/etc/trustdb.gpg:	$(BUILD_DIR)/bin/gpg build.txt
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
 	$(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --gen-key < build.txt; \
 	kill $$PID
-	TEMP=$(shell mktemp /tmp/biscuit.XXXXXXXXXX); \
-	chmod 600 $$TEMP; \
-	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --export $(shell cat $(HOST_EMAIL_FILE)) > $$TEMP; \
-	$(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --import $$TEMP; \
-	rm -f $$TEMP
 
 TARGETS+=$(BUILD_DIR)/etc/recipient.txt
 
@@ -302,38 +313,77 @@ ARTIFACTS+=$(BUILD_DIR)/etc/recipient.txt
 
 BUILD_ETC+=$(BUILD_DIR)/etc/recipient.txt
 
-$(BUILD_DIR)/etc/recipient.txt:	$(HOST_EMAIL_FILE)
+$(BUILD_DIR)/etc/recipient.txt:	$(HOST_DIR)/etc/pubring.gpg $(HOST_DIR)/etc/pubring.gpg~ $(HOST_DIR)/etc/random_seed $(HOST_DIR)/etc/secring.gpg $(HOST_DIR)/etc/trustdb.gpg $(HOST_EMAIL_FILE)
+	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --export $(shell cat $(HOST_EMAIL_FILE)) | $(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --import
 	touch $(BUILD_DIR)/etc/recipient.txt
 	chmod 600 $(BUILD_DIR)/etc/recipient.txt
 	cp $(HOST_EMAIL_FILE) $(BUILD_DIR)/etc/recipient.txt
 
 ################################################################################
-# ENCRYPT
+# UTILITIES
 ################################################################################
 
 PHONY+=encrypt
 
-encrypt:	$(BUILD_DIR)/bin/gpg $(BUILD_DIR)/etc/pubring.gpg $(BUILD_DIR)/etc/pubring.gpg~ $(BUILD_DIR)/etc/secring.gpg $(BUILD_DIR)/etc/trustdb.gpg $(BUILD_DIR)/etc/recipient.txt
-	rm -f $(CIPHEROUTPUTFILE)
-	$(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --output $(CIPHEROUTPUTFILE) --encrypt $(CLEARINPUTFILE)
-
-################################################################################
-# DECRYPT
-################################################################################
+# INPUTFILE: cleartext input file
+# OUTPUTFILE: ciphertext output file
+encrypt:	$(INPUTFILE)
+	rm $(OUTPUTFILE)
+	$(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --output $(OUTPUTFILE) --encrypt $(INPUTFILE)
 
 PHONY+=decrypt
 
-decrypt:	$(BUILD_DIR)/bin/gpg $(HOST_DIR)/etc/pubring.gpg $(HOST_DIR)/etc/pubring.gpg~ $(HOST_DIR)/etc/random_seed $(HOST_DIR)/etc/secring.gpg $(HOST_DIR)/etc/trustdb.gpg $(HOST_DIR)/etc/passphrase.txt
-	rm -f $(CLEAROUTPUTFILE)
-	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --passphrase-file $(HOST_DIR)/etc/passphrase.txt --output $(CLEAROUTPUTFILE) --decrypt $(CIPHERINPUTFILE)
+# INPUTFILE: ciphertext input file
+# OUTPUTFILE: cleartext output file
+decrypt:	$(INPUTFILE)
+	rm $(OUTPUTFILE)
+	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --passphrase-file $(HOST_DIR)/etc/passphrase.txt --output $(OUTPUTFILE) --decrypt $(INPUTFILE)
+
+PHONY+=package
+
+# INPUTFILE: biscuit script or executable input file
+# INPUTDIRECTORY: input directory of collateral files
+# OUTPUTFILE: biscuit binary output file
+package:	$(INPUTDIRECTORY) $(INPUTFILE)
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	find $(INPUTDIRECTORY) -depth -print0 | cpio --null -pd $$BISDIR; \
+	cp -f $(INPUTFILE) $$BISDIR/biscuit; \
+	chmod 555 $$BISDIR/biscuit; \
+	( cd $$BISDIR; find . -depth -print0 | cpio --null -o -H newc ) | bzip2 -c - | $(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --encrypt > $(OUTPUTFILE); \
+	rm -rf $$BISDIR
 
 ################################################################################
 # TESTS
 ################################################################################
 
+PHONY+=unittest1
+
+ARTIFACTS+=millay.bin
+ARTIFACTS+=millay.dat
+
 unittest1:
-	make CLEARINPUTFILE=millay.txt CIPHEROUTPUTFILE=millay.cip CIPHERINPUTFILE=millay.cip CLEAROUTPUTFILE=millay.dat encrypt decrypt
+	make INPUTFILE=millay.txt OUTPUTFILE=millay.bin encrypt
+	diff millay.txt millay.bin && false || true
+	make INPUTFILE=millay.bin OUTPUTFILE=millay.dat decrypt
 	diff millay.txt millay.dat
+
+ARTIFACTS+=biscuit.bin
+
+unittest2:	biscuit
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	cp millay.txt $$BISDIR; \
+	make INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest.sh OUTPUTFILE=biscuit.bin package; \
+	rm -rf $$BISDIR
+	./biscuit
+	test -f ./biscuit-unittest.dat
+
+TARGETS+=biscuit
+
+ARTIFACTS+=biscuit
+
+biscuit:	biscuit.sh
+	cp biscuit.sh biscuit
+	chmod 755 biscuit
 
 ################################################################################
 # DISTRIBUTION
@@ -344,10 +394,10 @@ PHONY+=dist
 ARTIFACTS+=$(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz
 
 dist $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz:
-	export TMPDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	svn export $(SVN_URL) $$TMPDIR/$(PROJECT)-$(MAJOR).$(MINOR).$(BUILD); \
-	tar -C $$TMPDIR -cvzf - $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD) > $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz; \
-	rm -rf $$TMPDIR
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	svn export $(SVN_URL) $$BISDIR/$(PROJECT)-$(MAJOR).$(MINOR).$(BUILD); \
+	tar -C $$BISDIR -cvzf - $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD) > $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz; \
+	rm -rf $$BISDIR
 
 ################################################################################
 # ENTRY POINTS
