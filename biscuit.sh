@@ -10,76 +10,81 @@ NAM="biscuit"
 TMP="/tmp"
 GPG="/usr/local/bin/gpg"
 ETC="/usr/local/etc"
-CWD="`pwd`"
-FIL="${CWD}/${NAM}"
 LOG="/usr/bin/logger"
 FAC="user"
 LEV="notice"
 CON="/dev/console"
-SUD="/usr/bin/sudo"
+TTY="/dev/tty"
 
-if [ -f /no${NAM} ]; then
-    exit 1
-fi
+NOB="/no${NAM}"
+CWD="`pwd`"
+DIR="${TMP}/${NAM}.XXXXXXXXXX"
+FIL="${CWD}/${NAM}.bin"
 
-if [ ! -f ${FIL} ]; then
+if [ -f ${NOB} ]; then
     exit 2
 fi
 
-if [ -z "${EUID}" ]; then
-    SUD=""
-elif [ ${EUID} -eq 0 ]; then
-    SUD=""
-elif [ ! -x ${SUD} ]; then
-    SUD=""
-else
-    :
+if [ ! -f ${FIL} ]; then
+    exit 3
 fi
 
-MNT="`mktemp -d ${TMP}/${NAM}.XXXXXX`"
-trap "sudo umount ${MNT}; rm -rf ${MNT}; exit 3" 1 2 3 15
-${SUD} mount -t tmpfs none ${MNT}
-if [ $? -ne 0 ]; then
-    rm -rf ${MNT}
-    exit 4
-fi
+MNT="`mktemp -d ${DIR}`"
 
 if [ -z "${EUID}" ]; then
+    MOU=":"
     OWN=""
+    UMO="rm -rf ${MNT}"
 elif [ ${EUID} -eq 0 ]; then
+    MOU="mount -t tmpfs none ${MNT}"
     OWN="-R root"
+    UMO="umount ${MNT}; rm -rf ${MNT}"
 else
+    MOU=":"
     OWN=""
+    UMO="rm -rf ${MNT}"
 fi
 
-${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -i ${OWN} --quiet )
+trap "${UMO}; exit 4" 1 2 3 15
+${MOU}
 if [ $? -ne 0 ]; then
-    ${SUD} umount ${MNT}
     rm -rf ${MNT}
     exit 5
 fi
 
-if [ ! -x ${MNT}/${NAM} ]; then
-    ${SUD} umount ${MNT}
-    rm -rf ${MNT}
+if [ ! -z "${BISCUITBIN}" ]; then
+    GPG="${BISCUITBIN}/gpg"
+fi
+
+if [ ! -z "${BISCUITETC}" ]; then
+    ETC="${BISCUITETC}"
+fi
+
+${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id ${OWN} --quiet )
+if [ $? -ne 0 ]; then
+    ${UMO}
     exit 6
 fi
 
+if [ ! -x ${MNT}/${NAM} ]; then
+    ${UMO}
+    exit 7
+fi
+
 if [ ! -z "${PS1}" ]; then
-    OUT="cat 1>&2"
+    OUT="tee ${TTY}"
 elif [ -x ${LOG} ]; then
-    OUT="${LOG} -i -p ${FAC}.${LEV} -t ${NAM} 1>/dev/null 2>/dev/null"
+    OUT="${LOG} -i -p ${FAC}.${LEV} -t ${NAM}"
 elif [ -c ${CON} ]; then
-    OUT="tee ${CON} 1>/dev/null 2>/dev/null"
+    OUT="tee ${CON}"
 else
-    OUT="cat 1>/dev/null 2>/dev/null"
+    OUT="tee ${TTY}"
 fi
 
 export PATH=${MNT}:${PATH}
 export LD_LIBRARY_PATH=${MNT}:${LD_LIBRARY_PATH}
-${MNT}/${NAM} < /dev/null 2>&1 | ${OUT}
+${MNT}/${NAM} </dev/null 2>&1 | ${OUT} 1>/dev/null 2>/dev/null
 
-${SUD} umount ${MNT}
-rm -rf ${MNT}
+${UMO}
 
 exit 0

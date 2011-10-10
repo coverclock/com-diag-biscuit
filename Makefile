@@ -81,8 +81,8 @@ ARCH=arm
 # PROJECT
 ################################################################################
 
-CWD:=${shell pwd}
-PROJECT_DIR=${CWD}/project
+CWD:=$(shell pwd)
+PROJECT_DIR=$(CWD)/project
 BUILD_DIR=$(PROJECT_DIR)/$(BUILD)
 HOST_DIR=$(PROJECT_DIR)/$(HOST)
 
@@ -328,7 +328,7 @@ PHONY+=encrypt
 # INPUTFILE: cleartext input file
 # OUTPUTFILE: ciphertext output file
 encrypt:	$(INPUTFILE)
-	rm $(OUTPUTFILE)
+	rm -f $(OUTPUTFILE)
 	$(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --output $(OUTPUTFILE) --encrypt $(INPUTFILE)
 
 PHONY+=decrypt
@@ -336,7 +336,7 @@ PHONY+=decrypt
 # INPUTFILE: ciphertext input file
 # OUTPUTFILE: cleartext output file
 decrypt:	$(INPUTFILE)
-	rm $(OUTPUTFILE)
+	rm -f $(OUTPUTFILE)
 	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --passphrase-file $(HOST_DIR)/etc/passphrase.txt --output $(OUTPUTFILE) --decrypt $(INPUTFILE)
 
 PHONY+=package
@@ -346,36 +346,62 @@ PHONY+=package
 # OUTPUTFILE: biscuit binary output file
 package:	$(INPUTDIRECTORY) $(INPUTFILE)
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	find $(INPUTDIRECTORY) -depth -print0 | cpio --null -pd $$BISDIR; \
+	( cd $(INPUTDIRECTORY); find . -depth -print | grep -v '^.$$' | cpio -pd $$BISDIR ); \
 	cp -f $(INPUTFILE) $$BISDIR/biscuit; \
 	chmod 555 $$BISDIR/biscuit; \
-	( cd $$BISDIR; find . -depth -print0 | cpio --null -o -H newc ) | bzip2 -c - | $(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --encrypt > $(OUTPUTFILE); \
+	( cd $$BISDIR; find . -depth -print | grep -v '^.$$' | cpio -o -H newc ) | bzip2 -c - | $(BUILD_DIR)/bin/gpg --homedir $(BUILD_DIR)/etc --batch --trust-model always --recipient $(shell cat $(BUILD_DIR)/etc/recipient.txt) --encrypt > $(OUTPUTFILE); \
 	rm -rf $$BISDIR
 
+PHONY+=manifest
+
+# INPUTFILE: biscuit binary input file
+manifest:	$(INPUTFILE)
+	$(BUILD_DIR)/bin/gpg --homedir $(HOST_DIR)/etc --batch --passphrase-file $(HOST_DIR)/etc/passphrase.txt --decrypt ${INPUTFILE} | bunzip2 -c - | cpio -tv
+
 ################################################################################
-# TESTS
+# UNIT TESTS
 ################################################################################
 
 PHONY+=unittest1
 
-ARTIFACTS+=millay.bin
-ARTIFACTS+=millay.dat
+ARTIFACTS+=biscuit-unittest1.bin
+ARTIFACTS+=biscuit-unittest1.dat
 
 unittest1:
-	make INPUTFILE=millay.txt OUTPUTFILE=millay.bin encrypt
-	diff millay.txt millay.bin && false || true
-	make INPUTFILE=millay.bin OUTPUTFILE=millay.dat decrypt
-	diff millay.txt millay.dat
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest1.txt OUTPUTFILE=biscuit-unittest1.bin encrypt
+	diff biscuit-unittest1.txt biscuit-unittest1.bin && false || true
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest1.bin OUTPUTFILE=biscuit-unittest1.dat decrypt
+	diff biscuit-unittest1.txt biscuit-unittest1.dat
+
+PHONY+=unittest2
+
+ARTIFACTS+=biscuit-unittest2.bin
+
+unittest2:
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest2a" > $$BISDIR/biscuit-unittest2a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest2b" > $$BISDIR/subdir/biscuit-unittest2b.txt; \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest2.bin package; \
+	rm -rf $$BISDIR
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest2.bin manifest
+
+PHONY+=unittest3
 
 ARTIFACTS+=biscuit.bin
+ARTIFACTS+=biscuit-unittest3a.dat
+ARTIFACTS+=biscuit-unittest3b.dat
 
-unittest2:	biscuit
+unittest3:	biscuit
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	cp millay.txt $$BISDIR; \
-	make INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest.sh OUTPUTFILE=biscuit.bin package; \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
 	rm -rf $$BISDIR
-	./biscuit
-	test -f ./biscuit-unittest.dat
+	BISCUITBIN=$(BUILD_DIR)/bin BISCUITETC=$(HOST_DIR)/etc bash -x ./biscuit
+	test -f ./biscuit-unittest3a.dat
+	test -f ./biscuit-unittest3b.dat
 
 TARGETS+=biscuit
 
