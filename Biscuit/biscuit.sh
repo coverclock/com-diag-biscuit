@@ -4,6 +4,9 @@
 # Licensed under the terms in README.h
 # Chip Overclock <coverclock@diag.com>
 # http://www.diag.com/navigation/downloads/Biscuit
+# If a biscuit binary file exists in the current directory, decrypts it,
+# decompresses it, and unpacks it into a temporary directory, and if a biscuit
+# executable exists in that temporary directory, executes it.
 ################################################################################
 
 NAM="biscuit"
@@ -60,7 +63,7 @@ if [ ! -z "${BISCUITETC}" ]; then
     ETC="${BISCUITETC}"
 fi
 
-# busybox cpio lacks "-R" and "--quiet".
+# busybox cpio lacks "-R user" and "--quiet".
 ${GPG} --homedir ${ETC} --batch --quiet --passphrase-file ${ETC}/passphrase.txt --decrypt ${FIL} | bunzip2 -c - | ( cd ${MNT}; cpio -id 1>/dev/null 2>/dev/null )
 if [ $? -ne 0 ]; then
     eval ${UMO}
