@@ -8,7 +8,7 @@
 PROJECT=biscuit
 MAJOR=0
 MINOR=0
-BUILD=0
+FIX=0
 
 SVN_URL=svn://graphite/biscuit/trunk/Biscuit
 HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
@@ -47,14 +47,15 @@ HOST_CROSS_COMPILE=arm-none-linux-gnueabi-
 # same biscuits, although the biscuits themselves may be able to make a finer
 # distinction of product type and adjust their actions accordingly.
 
-PRODUCT=cascada
+PRODUCT=example
 
 # You can (and should) use your own name, recipient, comment, and passphrase
 # files, and use different ones for different products or versions of the same
-# product. That prevents a biscuit for products A or version N from being used
-# on products B or version N+1. These are kept in files instead of passed as
+# product. That prevents a biscuit for product A or version N from being used
+# on product B or version M. These are kept in files instead of passed as
 # parameter values to accomodate keeping them in different places than the
-# biscuit Makefile.
+# biscuit Makefile, and to prevent the passphrases from showing up in commands
+# like ps.
 
 HOST_NAME_FILE=host_name.txt
 HOST_EMAIL_FILE=host_email.txt
@@ -117,6 +118,8 @@ HOST_DIR=$(PROJECT_DIR)/arch/$(HOST)
 # software is built and installed in the bin directory. More to the point,
 # it is only the gpg executable that needs to be installed on the embedded
 # HOST (providing the requisite shared libraries are also on the HOST).
+# The various biscuit scripts assume /usr/local/bin on the HOST but can be
+# overridden using the environmental variable BISCUITBIN.
 
 BUILD_BIN_DIR=$(BUILD_DIR)/bin
 HOST_BIN_DIR=$(HOST_DIR)/bin
@@ -125,6 +128,8 @@ HOST_BIN_DIR=$(HOST_DIR)/bin
 # same GNUPG executable binaries, they will probably have different keys. So
 # we separate the product lines into different directories. The BUILD
 # side can import and contain the HOST public keys for all product lines.
+# The various biscuit scripts assume /usr/local/etc/gnupg on the HOST. but can
+# be overridden by the environmental variable BISCUITETC.
 
 BUILD_ETC_DIR=$(PROJECT_DIR)/build/$(BUILD)/etc
 HOST_ETC_DIR=$(PROJECT_DIR)/host/$(PRODUCT)/$(HOST)/etc
@@ -268,28 +273,26 @@ TARGETS+=$(HOST_ETC_DIR)/random_seed
 TARGETS+=$(HOST_ETC_DIR)/secring.gpg
 TARGETS+=$(HOST_ETC_DIR)/trustdb.gpg
 
-ARTIFACTS+=host.txt
 ARTIFACTS+=$(HOST_ETC_DIR)/pubring.gpg
 ARTIFACTS+=$(HOST_ETC_DIR)/pubring.gpg~
 ARTIFACTS+=$(HOST_ETC_DIR)/random_seed
 ARTIFACTS+=$(HOST_ETC_DIR)/secring.gpg
 ARTIFACTS+=$(HOST_ETC_DIR)/trustdb.gpg
 
-host.txt:	$(HOST_NAME_FILE) $(HOST_EMAIL_FILE) $(HOST_COMMENT_FILE) $(HOST_PASSPHRASE_FILE) 
-	echo "Key-Type: $(HOST_KEY_TYPE)" > host.txt
-	echo "Key-Length: $(HOST_KEY_LENGTH)" >> host.txt
-	echo "Subkey-Type: $(HOST_SUBKEY_TYPE)" >> host.txt
-	echo "Subkey-Length: $(HOST_SUBKEY_LENGTH)" >> host.txt
-	echo "Name-Real: $(shell cat $(HOST_NAME_FILE))" >> host.txt
-	echo "Name-Comment: $(shell cat $(HOST_COMMENT_FILE))" >> host.txt
-	echo "Name-Email: $(shell cat $(HOST_EMAIL_FILE))" >> host.txt
-	echo "Expire-Date: $(HOST_EXPIRATION_DATE)" >> host.txt
-	echo "Passphrase: $(shell cat $(HOST_PASSPHRASE_FILE))" >> host.txt
-	echo "%commit" >> host.txt
-
-$(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg host.txt
+$(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg $(HOST_NAME_FILE) $(HOST_EMAIL_FILE) $(HOST_COMMENT_FILE) $(HOST_PASSPHRASE_FILE)
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
-	$(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --gen-key < host.txt; \
+	( \
+		echo "Key-Type: $(HOST_KEY_TYPE)"; \
+		echo "Key-Length: $(HOST_KEY_LENGTH)"; \
+		echo "Subkey-Type: $(HOST_SUBKEY_TYPE)"; \
+		echo "Subkey-Length: $(HOST_SUBKEY_LENGTH)"; \
+		echo "Name-Real: $(shell cat $(HOST_NAME_FILE))"; \
+		echo "Name-Comment: $(shell cat $(HOST_COMMENT_FILE))"; \
+		echo "Name-Email: $(shell cat $(HOST_EMAIL_FILE))"; \
+		echo "Expire-Date: $(HOST_EXPIRATION_DATE)"; \
+		echo "Passphrase: $(shell cat $(HOST_PASSPHRASE_FILE))"; \
+		echo "%commit"; \
+	) | $(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --gen-key; \
 	kill $$PID
 
 TARGETS+=$(HOST_ETC_DIR)/passphrase.txt
@@ -319,28 +322,26 @@ TARGETS+=$(BUILD_ETC_DIR)/secring.gpg
 TARGETS+=$(BUILD_ETC_DIR)/trustdb.gpg
 TARGETS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
 
-ARTIFACTS+=build.txt
 ARTIFACTS+=$(BUILD_ETC_DIR)/pubring.gpg
 ARTIFACTS+=$(BUILD_ETC_DIR)/pubring.gpg~
 ARTIFACTS+=$(BUILD_ETC_DIR)/secring.gpg
 ARTIFACTS+=$(BUILD_ETC_DIR)/trustdb.gpg
 ARTIFACTS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
 
-build.txt:	$(BUILD_NAME_FILE) $(BUILD_EMAIL_FILE) $(BUILD_COMMENT_FILE) $(BUILD_PASSPHRASE_FILE) 
-	echo "Key-Type: $(BUILD_KEY_TYPE)" > build.txt
-	echo "Key-Length: $(BUILD_KEY_LENGTH)" >> build.txt
-	echo "Subkey-Type: $(BUILD_SUBKEY_TYPE)" >> build.txt
-	echo "Subkey-Length: $(BUILD_SUBKEY_LENGTH)" >> build.txt
-	echo "Name-Real: $(shell cat $(BUILD_NAME_FILE))" >> build.txt
-	echo "Name-Comment: $(shell cat $(BUILD_COMMENT_FILE))" >> build.txt
-	echo "Name-Email: $(shell cat $(BUILD_EMAIL_FILE))" >> build.txt
-	echo "Expire-Date: $(BUILD_EXPIRATION_DATE)" >> build.txt
-	echo "Passphrase: $(shell cat $(BUILD_PASSPHRASE_FILE))" >> build.txt
-	echo "%commit" >> build.txt
-
-$(BUILD_ETC_DIR)/pubring.gpg $(BUILD_ETC_DIR)/pubring.gpg~ $(BUILD_ETC_DIR)/secring.gpg $(BUILD_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg build.txt
+$(BUILD_ETC_DIR)/pubring.gpg $(BUILD_ETC_DIR)/pubring.gpg~ $(BUILD_ETC_DIR)/secring.gpg $(BUILD_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg $(BUILD_NAME_FILE) $(BUILD_EMAIL_FILE) $(BUILD_COMMENT_FILE) $(BUILD_PASSPHRASE_FILE)
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
-	$(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --gen-key < build.txt; \
+	( \
+		echo "Key-Type: $(BUILD_KEY_TYPE)"; \
+		echo "Key-Length: $(BUILD_KEY_LENGTH)"; \
+		echo "Subkey-Type: $(BUILD_SUBKEY_TYPE)"; \
+		echo "Subkey-Length: $(BUILD_SUBKEY_LENGTH)"; \
+		echo "Name-Real: $(shell cat $(BUILD_NAME_FILE))"; \
+		echo "Name-Comment: $(shell cat $(BUILD_COMMENT_FILE))"; \
+		echo "Name-Email: $(shell cat $(BUILD_EMAIL_FILE))"; \
+		echo "Expire-Date: $(BUILD_EXPIRATION_DATE)"; \
+		echo "Passphrase: $(shell cat $(BUILD_PASSPHRASE_FILE))"; \
+		echo "%commit"; \
+	) | $(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --gen-key; \
 	kill $$PID
 
 TARGETS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
@@ -349,11 +350,16 @@ ARTIFACTS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
 
 BUILD_ETC+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
 
-$(BUILD_ETC_DIR)/$(PRODUCT).txt:	$(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg $(HOST_EMAIL_FILE)
+# Below is where the key exchange between HOST and BUILD takes place. Note that
+# you can't use the $(shell) syntax to pass the recipient identifier to GPG:
+# make evaluates the variable before the file has been created by the prior
+# rules.
+
+$(BUILD_ETC_DIR)/$(PRODUCT).txt:	$(BUILD_BIN_DIR)/gpg $(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg $(HOST_EMAIL_FILE)
 	touch $(BUILD_ETC_DIR)/$(PRODUCT).txt
 	chmod 600 $(BUILD_ETC_DIR)/$(PRODUCT).txt
 	cp $(HOST_EMAIL_FILE) $(BUILD_ETC_DIR)/$(PRODUCT).txt
-	$(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --export $(shell cat $(BUILD_ETC_DIR)/$(PRODUCT).txt) | $(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --import
+	$(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --export "`cat $(BUILD_ETC_DIR)/$(PRODUCT).txt`" | $(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --import
 
 ################################################################################
 # UTILITIES
@@ -364,16 +370,14 @@ PHONY+=encrypt
 # INPUTFILE: cleartext input file
 # OUTPUTFILE: ciphertext output file
 encrypt:	$(INPUTFILE)
-	rm -f $(OUTPUTFILE)
-	$(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --trust-model always --recipient $(shell cat $(BUILD_ETC_DIR)/$(PRODUCT).txt) --output $(OUTPUTFILE) --encrypt $(INPUTFILE)
+	$(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --trust-model always --recipient $(shell cat $(BUILD_ETC_DIR)/$(PRODUCT).txt) --encrypt <$(INPUTFILE) >$(OUTPUTFILE)
 
 PHONY+=decrypt
 
 # INPUTFILE: ciphertext input file
 # OUTPUTFILE: cleartext output file
 decrypt:	$(INPUTFILE)
-	rm -f $(OUTPUTFILE)
-	$(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --passphrase-file $(HOST_ETC_DIR)/passphrase.txt --output $(OUTPUTFILE) --decrypt $(INPUTFILE)
+	$(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --passphrase-file $(HOST_ETC_DIR)/passphrase.txt --decrypt <$(INPUTFILE) >$(OUTPUTFILE)
 
 PHONY+=package
 
@@ -408,6 +412,7 @@ unittest1:
 	diff biscuit-unittest1.txt biscuit-unittest1.bin && false || true
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest1.bin OUTPUTFILE=biscuit-unittest1.dat decrypt
 	diff biscuit-unittest1.txt biscuit-unittest1.dat
+	echo "unittest1: PASSED"
 
 PHONY+=unittest2
 
@@ -421,6 +426,7 @@ unittest2:
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest2.bin package; \
 	rm -rf $$BISDIR
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest2.bin manifest
+	echo "unittest2: PASSED"
 
 PHONY+=unittest3
 
@@ -438,6 +444,7 @@ unittest3:	biscuit
 	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit
 	test -f ./biscuit-unittest3a.dat
 	test -f ./biscuit-unittest3b.dat
+	echo "unittest3: PASSED"
 
 TARGETS+=biscuit
 
@@ -447,18 +454,69 @@ biscuit:	biscuit.sh
 	cp biscuit.sh biscuit
 	chmod 755 biscuit
 
+TARGETS+=printenv
+
+ARTIFACTS+=printenv
+
+printenv:	printenv.c
+	$(HOST_CROSS_COMPILE)gcc -o printenv printenv.c
+
+################################################################################
+# EXAMPLES
+################################################################################
+
+PHONY+=cascada cascada-unittests
+
+cascada:
+	make \
+		PRODUCT=cascada \
+		BUILD=i686-pc-linux-gnu \
+		HOST=arm-linux-gnu \
+		BUILD_CROSS_COMPILE= \
+		HOST_CROSS_COMPILE=arm-none-linux-gnueabi- \
+		BUILD_TOOLCHAIN_DIR=/usr/bin \
+		HOST_TOOLCHAIN_DIR=/opt/arm-2011.03 \
+		HOST_NAME_FILE=${HOME}/biscuit/cascada/host_name.txt \
+		HOST_EMAIL_FILE=${HOME}/biscuit/cascada/host_email.txt \
+		HOST_COMMENT_FILE=${HOME}/biscuit/cascada/host_comment.txt \
+		HOST_PASSPHRASE_FILE=${HOME}/biscuit/cascada/host_passphrase.txt \
+		all
+
+cascada-unittests:
+	make unittest1 unittest2 unittest3 PRODUCT=cascada HOST=arm-linux-gnu
+
+PHONY+=silver silver-unittests
+
+silver:
+	make \
+		PRODUCT=silver \
+		BUILD=i686-pc-linux-gnu \
+		HOST=i686-pc-linux-gnu \
+		BUILD_CROSS_COMPILE= \
+		HOST_CROSS_COMPILE= \
+		BUILD_TOOLCHAIN_DIR=/usr/bin \
+		HOST_TOOLCHAIN_DIR=/usr/bin \
+		HOST_NAME_FILE=${HOME}/biscuit/silver/host_name.txt \
+		HOST_EMAIL_FILE=${HOME}/biscuit/silver/host_email.txt \
+		HOST_COMMENT_FILE=${HOME}/biscuit/silver/host_comment.txt \
+		HOST_PASSPHRASE_FILE=${HOME}/biscuit/silver/host_passphrase.txt \
+		all
+
+silver-unittests:
+	make unittest1 unittest2 unittest3 PRODUCT=silver HOST=i686-pc-linux-gnu
+
 ################################################################################
 # DISTRIBUTION
 ################################################################################
 
 PHONY+=dist
 
-ARTIFACTS+=$(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz
+ARTIFACTS+=$(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz
 
-dist $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz:
+dist $(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz:
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	svn export $(SVN_URL) $$BISDIR/$(PROJECT)-$(MAJOR).$(MINOR).$(BUILD); \
-	tar -C $$BISDIR -cvzf - $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD) > $(PROJECT)-$(MAJOR).$(MINOR).$(BUILD).tgz; \
+	svn export $(SVN_URL) $$BISDIR/$(PROJECT)-$(MAJOR).$(MINOR).$(FIX); \
+	tar -C $$BISDIR -cvzf - $(PROJECT)-$(MAJOR).$(MINOR).$(FIX) > $(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz; \
 	rm -rf $$BISDIR
 
 ################################################################################
@@ -474,7 +532,6 @@ clean:
 	
 pristine:	clean
 	rm -rf $(PROJECT_DIR)
-	rm -rf $(BUILD_DIR)
 
 ################################################################################
 # END

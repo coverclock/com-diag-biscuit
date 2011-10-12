@@ -74,7 +74,9 @@
 	Various versions of Biscuit have been built and tested on the following
 	platforms:
 
-		TI Beagle Board xM Revision C
+		BeagleBoard xM Revision C
+		Angstrom 2010.7
+		Linux 2.6.32
 		Code Sourcery Lite 2011.03
 
 *******************************************************************************/
