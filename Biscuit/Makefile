@@ -491,8 +491,9 @@ unittest3:	biscuit
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
 	rm -rf $$BISDIR
 	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit
-	test -f ./biscuit-unittest3a.dat
-	test -f ./biscuit-unittest3b.dat
+	test -f ./biscuit-unittest3.txt
+	test -f ./biscuit-unittest3a.txt
+	test -f ./biscuit-unittest3b.txt
 	echo "unittest3: PASSED"
 
 TARGETS+=biscuit
