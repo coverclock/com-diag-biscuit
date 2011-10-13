@@ -3,6 +3,21 @@
 # Licensed under the terms in README.h
 # Chip Overclock <coverclock@diag.com>
 # http://www.diag.com/navigation/downloads/Biscuit
+# 1. Read the comments in this Makefile, which is where most of the
+#    documentation for this project resides.
+# 2. Look at the MAKE targets in the EXAMPLES section, which is where I
+#    generate the BUILD and HOST components for my own use, and make your
+#    own targets, either in this MAKEFILE or in a separate one.
+# 3. Make your own BUILD and HOST components.
+# 4. Run the unittest1, unittest2, and unittest3 unit tests on your BUILD
+#    server.
+# 5. Install the BUILD components on your BUILD server.
+# 6. Deploy the HOST components on your HOST embedded target.
+# 7. Make a unittest3 biscuit for your HOST and run it on your HOST embedded
+#    target manually using the biscuit command.
+# 8. Place the DELIVERABLES for your BUILD and HOST under change control or
+#    otherwise archive them.
+# 9. Try writing your own biscuit scripts.
 ################################################################################
 
 PROJECT=biscuit
@@ -164,13 +179,13 @@ HOST_ETC_DIR=$(PROJECT_DIR)/host/$(PRODUCT)/$(HOST)/etc
 # LISTS
 ################################################################################
 
-PHONY=
+PHONY=# Remake these targets every time regardless of dependencies.
 
-TARGETS=
+TARGETS=# Make these targets when making all.
 
-ARTIFACTS=
+ARTIFACTS=# Remove these targets when making clean.
 
-DELIVERABLES=
+DELIVERABLES=# Remove these targets when making clobber.
 
 ################################################################################
 # DEFAULT
@@ -501,6 +516,8 @@ printenv:	printenv.c
 
 PHONY+=cascada cascada-unittests cascada-unittest3.bin cascada-syslog.bin
 
+ARTIFACTS+=cascada-unittest3.bin cascada-syslog.bin
+
 cascada:
 	make all \
 		PRODUCT=cascada \
@@ -532,6 +549,8 @@ cascada-syslog.bin:
 	rm -rf $$BISDIR
 
 PHONY+=silver silver-unittests silver-unittest3.bin silver-syslog.bin
+
+ARTIFACTS+=silver-unittest3.bin silver-syslog.bin
 
 silver:
 	make all \
@@ -571,8 +590,12 @@ PHONY+=install
 
 # Probably need to be SU or use SUDO for this.
 
+# PRODUCT: the product line whose public key is going on the BUILD server.
+# BUILD: the GNU architecture string for the BUILD server.
+# INSTALL_BIN: where the GPG binary is being installed on the BUILD server.
+# INSTALL_ETC: where the GPG key rings are being installed on the BUILD server.
 install:
-	mkdir -p -m 755 $(BUILD_BIN_DIR)
+	mkdir -p -m 755 $(BUILD_BIN)
 	install -m 755 $(BUILD_BIN_DIR)/gpg $(INSTALL_BIN)
 	mkdir -p -m 700 $(INSTALL_ETC)
 	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg $(INSTALL_ETC)
@@ -582,18 +605,25 @@ install:
 	install -m 600 $(BUILD_ETC_DIR)/$(PRODUCT).txt $(INSTALL_ETC)
 
 ################################################################################
-# HOST DELIVERY
+# HOST DEPLOY
 ################################################################################
 
-PHONY+=delivery
+PHONY+=deploy
+
+# How you get these DELIVERABLES on your own embedded HOST is up to you.
 
 ARTIFACTS+=$(PRODUCT).tgz
 
-delivery:	biscuit
+# PRODUCT: the product line whose public key is going on the BUILD server.
+# HOST: the GNU architecture string for the HOST embedded target.
+# INSTALL_BIN: where the GPG binary is being installed on the HOST target.
+# INSTALL_ETC: where the GPG key rings are being installed on the HOST target.
+deploy $(PRODUCT).tgz:	biscuit printenv
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
 	mkdir -p -m 755 $$BISDIR/$(INSTALL_BIN); \
 	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/$(INSTALL_BIN); \
 	install -m 755 biscuit $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 printenv $$BISDIR/$(INSTALL_BIN); \
 	mkdir -p -m 700 $$BISDIR/$(INSTALL_ETC); \
 	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/$(INSTALL_ETC); \
 	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/$(INSTALL_ETC); \
