@@ -10,6 +10,8 @@
 # Or (if not):
 #  cp biscuit.hotplug.sh /sbin/hotplug
 #  chmod 755 /sbin/hotplug
+# Also (if /proc/sys/kernel/hotplug is empty then on every boot):
+#  echo "/sbin/hotplug" > /proc/sys/kernel/hotplug
 ################################################################################
 
 NAM="`basename $0`"
@@ -29,7 +31,7 @@ if [ -n "${BISCUITBIN}" ]; then
     BIS="${BISCUITBIN}/biscuit"
 fi
 
-if [ -x "${BIS}" ]; then
+if [ ! -x "${BIS}" ]; then
     exit 4
 fi
 
@@ -41,7 +43,7 @@ if [ ! -d ${DIR} ]; then
 fi
 
 if mount -t auto -o async,relatime ${DEV} ${DIR}; then
-    ( cd ${DIR}; ${BIS} )
+    ( cd ${DIR}; exec ${BIS} </dev/null 1>/dev/null 2>/dev/null )
 else
     rm -rf ${DIR}
     exit 6

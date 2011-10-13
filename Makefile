@@ -61,7 +61,11 @@ SOURCE_DIR=$(HOME)/src/gnupg-1.4.11#ftp://ftp.gnupg.org/gcrypt/gnupg/gnupg-1.4.1
 # software is all built and biscuit binary packages are encrypted. HOST is the
 # target side on which the biscuit binary packages are decrypted and executed.
 # The values below are for building and encrypting on a i686 Linux/GNU server,
-# and decrypting on an ARM Linux/GNU embedded target.
+# and decrypting on an ARM Linux/GNU embedded target. If these two strings
+# happen to be the same (meaning your BUILD server and your HOST embedded
+# target use the same processor), MAKE gets a little peeved because it sees
+# two sets of rules for building the GNUPG binary. Don't fret, the rules
+# degenerate to the same thing, and it all works out in the end.
 
 BUILD=i686-pc-linux-gnu
 HOST=arm-linux-gnu
@@ -516,12 +520,62 @@ printenv:	printenv.c
 	$(HOST_CROSS_COMPILE)gcc -o printenv printenv.c
 
 ################################################################################
+# BUILD INSTALL
+################################################################################
+
+PHONY+=install
+
+# Probably need to be SU or use SUDO for this.
+
+# PRODUCT: the product line whose public key is going on the BUILD server.
+# BUILD: the GNU architecture string for the BUILD server.
+# INSTALL_BIN: where the GPG binary is being installed on the BUILD server.
+# INSTALL_ETC: where the GPG key rings are being installed on the BUILD server.
+install:	
+	mkdir -p -m 755 $(BUILD_BIN)
+	install -m 755 $(BUILD_BIN_DIR)/gpg $(INSTALL_BIN)
+	mkdir -p -m 700 $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg~ $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/secring.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/trustdb.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/$(PRODUCT).txt $(INSTALL_ETC)
+
+################################################################################
+# HOST DEPLOY
+################################################################################
+
+PHONY+=deploy
+
+# How you get these DELIVERABLES on your own embedded HOST is up to you.
+
+# PRODUCT: the product line whose public key is going on the BUILD server.
+# HOST: the GNU architecture string for the HOST embedded target.
+# INSTALL_BIN: where the GPG binary is being installed on the HOST target.
+# INSTALL_ETC: where the GPG key rings are being installed on the HOST target.
+deploy:	biscuit printenv
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	mkdir -p -m 755 $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 biscuit $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 printenv $$BISDIR/$(INSTALL_BIN); \
+	mkdir -p -m 700 $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/random_seed $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/secring.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/trustdb.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/passphrase.txt $$BISDIR/$(INSTALL_ETC); \
+	tar -C $$BISDIR -cvzf - . > $(PRODUCT).tgz; \
+	rm -rf $$BISDIR
+
+################################################################################
 # EXAMPLES
 ################################################################################
 
-PHONY+=cascada cascada-unittests cascada-unittest3.bin cascada-syslog.bin
+PHONY+=cascada cascada-unittests cascada-unittest3.bin cascada-syslog.bin cascada.tgz
 
-ARTIFACTS+=cascada-unittest3.bin cascada-syslog.bin
+ARTIFACTS+=cascada-unittest3.bin cascada-syslog.bin cascada.tgz
 
 cascada:
 	make all \
@@ -553,9 +607,12 @@ cascada-syslog.bin:
 	make package PRODUCT=cascada HOST=arm-linux=gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-syslog.sh OUTPUTFILE=cascada-syslog.bin; \
 	rm -rf $$BISDIR
 
-PHONY+=silver silver-unittests silver-unittest3.bin silver-syslog.bin
+cascada.tgz:
+	make deploy PRODUCT=cascada HOST=arm-linux-gnu
 
-ARTIFACTS+=silver-unittest3.bin silver-syslog.bin
+PHONY+=silver silver-unittests silver-unittest3.bin silver-syslog.bin silver.tgz
+
+ARTIFACTS+=silver-unittest3.bin silver-syslog.bin silver.tgz
 
 silver:
 	make all \
@@ -587,57 +644,8 @@ silver-syslog.bin:
 	make package PRODUCT=silver HOST=i686-pc-linux-gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-syslog.sh OUTPUTFILE=silver-syslog.bin; \
 	rm -rf $$BISDIR
 
-################################################################################
-# BUILD INSTALL
-################################################################################
-
-PHONY+=install
-
-# Probably need to be SU or use SUDO for this.
-
-# PRODUCT: the product line whose public key is going on the BUILD server.
-# BUILD: the GNU architecture string for the BUILD server.
-# INSTALL_BIN: where the GPG binary is being installed on the BUILD server.
-# INSTALL_ETC: where the GPG key rings are being installed on the BUILD server.
-install:
-	mkdir -p -m 755 $(BUILD_BIN)
-	install -m 755 $(BUILD_BIN_DIR)/gpg $(INSTALL_BIN)
-	mkdir -p -m 700 $(INSTALL_ETC)
-	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg $(INSTALL_ETC)
-	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg~ $(INSTALL_ETC)
-	install -m 600 $(BUILD_ETC_DIR)/secring.gpg $(INSTALL_ETC)
-	install -m 600 $(BUILD_ETC_DIR)/trustdb.gpg $(INSTALL_ETC)
-	install -m 600 $(BUILD_ETC_DIR)/$(PRODUCT).txt $(INSTALL_ETC)
-
-################################################################################
-# HOST DEPLOY
-################################################################################
-
-PHONY+=deploy
-
-# How you get these DELIVERABLES on your own embedded HOST is up to you.
-
-ARTIFACTS+=$(PRODUCT).tgz
-
-# PRODUCT: the product line whose public key is going on the BUILD server.
-# HOST: the GNU architecture string for the HOST embedded target.
-# INSTALL_BIN: where the GPG binary is being installed on the HOST target.
-# INSTALL_ETC: where the GPG key rings are being installed on the HOST target.
-deploy $(PRODUCT).tgz:	biscuit printenv
-	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	mkdir -p -m 755 $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 biscuit $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 printenv $$BISDIR/$(INSTALL_BIN); \
-	mkdir -p -m 700 $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/random_seed $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/secring.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/trustdb.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/passphrase.txt $$BISDIR/$(INSTALL_ETC); \
-	tar -C $$BISDIR -cvzf - . > $(PRODUCT).tgz; \
-	rm -rf $$BISDIR
+silver.tgz:
+	make deploy PRODUCT=silver HOST=i686-pc-linux-gnu
 
 ################################################################################
 # DISTRIBUTION
