@@ -6,12 +6,16 @@
 # http://www.diag.com/navigation/downloads/Biscuit
 # If a biscuit binary file exists in the current directory, decrypts it,
 # decompresses it, and unpacks it into a temporary directory, and if a biscuit
-# executable exists in that temporary directory, executes it.
+# executable exists in that temporary directory, executes it. A biscuit binary
+# file can be specified as a single argument to override the default behavior.
+# All behavior can be suppressed by the presence of a /nobiscuit file, which
+# is a way to immunize systems, temporarily or permanently, against biscuits.
 # Install (or choose another directory):
 #  cp biscuit.sh /usr/local/bin/biscuit
 #  chmod 755 /usr/local/bin/biscuit
 # Decide whether you want to add biscuit to the sudo-capable commands to allow
 # otherwise unprivileged users to invoke it to run a biscuit.bin manually.
+# Under no circumstances should you make the biscuit command set-uid root.
 ################################################################################
 
 NAM="biscuit"
@@ -31,6 +35,10 @@ FIL="${CWD}/${NAM}.bin"
 
 if [ -f ${NOB} ]; then
     exit 1
+fi
+
+if [ -n "$1" ]; then
+    FIL="$1"
 fi
 
 if [ ! -f ${FIL} ]; then
