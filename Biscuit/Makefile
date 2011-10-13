@@ -22,7 +22,7 @@
 
 PROJECT=biscuit
 MAJOR=0
-MINOR=0
+MINOR=1
 FIX=0
 
 SVN_URL=svn://graphite/biscuit/trunk/Biscuit
@@ -479,18 +479,22 @@ unittest2:
 
 PHONY+=unittest3
 
-ARTIFACTS+=biscuit.bin
-ARTIFACTS+=biscuit-unittest3a.dat
-ARTIFACTS+=biscuit-unittest3b.dat
+ARTIFACTS+=biscuit-unittest3.bin
+ARTIFACTS+=biscuit-unittest3.txt
+ARTIFACTS+=biscuit-unittest3a.txt
+ARTIFACTS+=biscuit-unittest3b.txt
 
 unittest3:	biscuit
+	rm -f ./biscuit-unittest3.txt
+	rm -f ./biscuit-unittest3a.txt
+	rm -f ./biscuit-unittest3b.txt
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
 	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
 	mkdir -p $$BISDIR/subdir; \
 	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
-	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest3.bin package; \
 	rm -rf $$BISDIR
-	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit biscuit-unittest3.bin
 	test -f ./biscuit-unittest3.txt
 	test -f ./biscuit-unittest3a.txt
 	test -f ./biscuit-unittest3b.txt
