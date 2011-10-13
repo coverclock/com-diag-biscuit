@@ -6,16 +6,16 @@
 # http://www.diag.com/navigation/downloads/Biscuit
 ################################################################################
 NAME="`basename $0`"
+echo "${NAME}: begin"
+WORKING="`pwd`"
 SOURCE="`dirname $0`"
 [ -z "${SOURCE}" ] && SOURCE="."
-WORKING="`pwd`"
-echo "${NAME}: PATH=\"${PATH}\"" 1>&2
-echo "${NAME}: LD_LIBRARY_PATH=\"${LD_LIBRARY_PATH}\"" 1>&2
-echo "${NAME}: HOME=\"${HOME}\"" 1>&2
-echo "${NAME}: SOURCE=\"${SOURCE}\"" 1>&2
-echo "${NAME}: WORKING=\"${WORKING}\"" 1>&2
-rm -f ${WORKING}/biscuit-unittest3a.dat
-[ -f ${SOURCE}/biscuit-unittest3a.txt ] && touch ${WORKING}/biscuit-unittest3a.dat || exit 1
-rm -f ${WORKING}/biscuit-unittest3b.dat
-[ -f ${SOURCE}/subdir/biscuit-unittest3b.txt ] && touch ${WORKING}/biscuit-unittest3b.dat || exit 2
+echo "${NAME}: PATH=\"${PATH}\"" >${WORKING}/biscuit-unittest3.txt
+echo "${NAME}: LD_LIBRARY_PATH=\"${LD_LIBRARY_PATH}\"" >>${WORKING}/biscuit-unittest3.txt
+echo "${NAME}: HOME=\"${HOME}\"" >>${WORKING}/biscuit-unittest3.txt
+echo "${NAME}: SOURCE=\"${SOURCE}\"" >>${WORKING}/biscuit-unittest3.txt
+echo "${NAME}: WORKING=\"${WORKING}\"" >>${WORKING}/biscuit-unittest3.txt
+rm -f ${WORKING}/biscuit-unittest3a.txt; [ -f ${SOURCE}/biscuit-unittest3a.txt ] && cp ${SOURCE}/biscuit-unittest3a.txt ${WORKING}
+rm -f ${WORKING}/biscuit-unittest3b.txt; [ -f ${SOURCE}/subdir/biscuit-unittest3b.txt ] && cp ${SOURCE}/subdir/biscuit-unittest3b.txt ${WORKING}
+echo "${NAME}: end"
 exit 0
