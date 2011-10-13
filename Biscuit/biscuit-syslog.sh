@@ -21,5 +21,8 @@ TIMESTAMP="`date -u '+%Y%m%dT%H%M%S'`"
 cd ${SOURCE}
 PREFIX="${MACHNAME}-${HOSTNAME}-${MACHINEID}-${TIMESTAMP}"
 tar -C /var/log -czf - . 1> ${WORKING}/${PREFIX}.tgz 2> /dev/null
+sync
+sync
+sync
 echo "${NAME}: end"
 exit 0

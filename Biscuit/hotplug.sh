@@ -12,7 +12,7 @@
 DIR="/etc/hotplug.d"
 for FF in ${DIR}/$1/*.hotplug ${DIR}/default/*.hotplug; do
     if [ -x ${FF} ]; then
-        ${FF} $1
+        ${FF} $1 </dev/null 1>/dev/null 2>/dev/null
     fi
 done
 exit 0
