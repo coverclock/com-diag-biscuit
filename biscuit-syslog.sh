@@ -4,18 +4,22 @@
 # Licensed under the terms in README.h
 # Chip Overclock <coverclock@diag.com>
 # http://www.diag.com/navigation/downloads/Biscuit
+# Tarballs up /var/log and stores it WORKING.
 ################################################################################
 NAME="`basename $0`"
-SOURCE="`dirname $0`"
-[ -z "${SOURCE}" ] && SOURCE="."
+echo "${NAME}: begin"
 WORKING="`pwd`"
-echo "${NAME}: PATH=\"${PATH}\"" 1>&2
-echo "${NAME}: LD_LIBRARY_PATH=\"${LD_LIBRARY_PATH}\"" 1>&2
-echo "${NAME}: HOME=\"${HOME}\"" 1>&2
-echo "${NAME}: SOURCE=\"${SOURCE}\"" 1>&2
-echo "${NAME}: WORKING=\"${WORKING}\"" 1>&2
-rm -f ${WORKING}/biscuit-unittest3a.dat
-[ -f ${SOURCE}/biscuit-unittest3a.txt ] && touch ${WORKING}/biscuit-unittest3a.dat || exit 1
-rm -f ${WORKING}/biscuit-unittest3b.dat
-[ -f ${SOURCE}/subdir/biscuit-unittest3b.txt ] && touch ${WORKING}/biscuit-unittest3b.dat || exit 2
+SOURCE="`dirname $0`"
+[ -z "${SOURCE}" ] && SOURCE="${WORKING}"
+HOSTNAME="`uname -n`"
+[ -z "${HOSTNAME}" ] && HOST="unknown"
+MACHNAME="`uname -m`"
+[ -z "${HOSTNAME}" ] && HOST="unknown"
+MACHINEID="`ifconfig -a | awk '/HWaddr/ { gsub(/:/,"",$5); MID=MID $5; } END { print MID; }'`"
+[ -z "${MACHINEID}" ] && MACADDRESS="XXXXXXXXXXXX"
+TIMESTAMP="`date -u '+%Y%m%dT%H%M%S'`"
+cd ${SOURCE}
+PREFIX="${MACHNAME}-${HOSTNAME}-${MACHINEID}-${TIMESTAMP}"
+tar -C /var/log -czf - . 1> ${WORKING}/${PREFIX}.tgz 2> /dev/null
+echo "${NAME}: end"
 exit 0

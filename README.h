@@ -75,9 +75,16 @@
 	platforms:
 
 		BeagleBoard xM Revision C
+		armv7l
 		Angstrom 2010.7
 		Linux 2.6.32
 		Code Sourcery Lite 2011.03
+
+		Dell Inspiron 530
+		i686
+		Ubuntu 10.04 "Lucid Lynx"
+		Linux 2.6.32
+		GCC 4.4.3
 
 *******************************************************************************/
 

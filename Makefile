@@ -17,8 +17,25 @@ HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
 # PREREQUISITES
 ################################################################################
 
+# This is just wherever your BUILD server keeps its standard GNU GCC toolchain.
+
 BUILD_TOOLCHAIN_DIR=/usr/bin
+
+# This is the CodeSourcery ARM cross compiler toolchain. The 2011.03 release
+# works fine on this project, but I've gotten "internal compiler error" on
+# other projects where the older 2008q1 and 2010q1 releases worked.
+
 HOST_TOOLCHAIN_DIR=/opt/arm-2011.03#https://sourcery.mentor.com/sgpp/lite/arm/portal/package8739/public/arm-none-linux-gnueabi/arm-2011.03-41-arm-none-linux-gnueabi-i686-pc-linux-gnu.tar.bz2
+
+# Do not blithely move to a new version of GNUPG. My experience is that not all
+# versions of GNUPG are interoperable. Hence, a new version of GNUPG may not
+# decrypt files encrypted by prior versions. It is for this reason that it is
+# imperative that the BUILD and HOST GNUPGs are built from the same source tree.
+# Be wary of the fact that your BUILD server likely already has its own GNUPG
+# somewhere like /usr/bin. Once HOST GNUPGs are in the field on embedded
+# systems, changing the BUILD GNUPG is not something you want to do without a
+# lot of interoperability testing.
+
 SOURCE_DIR=$(HOME)/src/gnupg-1.4.11#ftp://ftp.gnupg.org/gcrypt/gnupg/gnupg-1.4.11.tar.bz2
 
 ################################################################################
@@ -66,6 +83,15 @@ BUILD_NAME_FILE=build_name.txt
 BUILD_EMAIL_FILE=build_email.txt
 BUILD_COMMENT_FILE=build_comment.txt
 BUILD_PASSPHRASE_FILE=build_passphrase.txt
+
+# These point to where the BUILD deliverables are to be installed. The HOST
+# deliverables are to be installed as well, but this Makefile assumes that
+# has to be done through some other mechanism, like including them in some
+# kind of separate embedded root file system generation specific to each
+# PRODUCT.
+
+INSTALL_BIN=/usr/local/bin
+INSTALL_ETC=/usr/local/etc/gnupg
 
 # Set these for using the various utility make targets like encrypt, decrypt,
 # package, and manifest.
@@ -144,13 +170,7 @@ TARGETS=
 
 ARTIFACTS=
 
-HOST_BIN=
-
-HOST_ETC=
-
-BUILD_BIN=
-
-BUILD_ETC=
+DELIVERABLES=
 
 ################################################################################
 # DEFAULT
@@ -161,19 +181,20 @@ PHONY+=default
 default:	all
 
 ################################################################################
-# HOST/bin
+# HOST BIN
 ################################################################################
 
 PHONY+=host
 
-host:	$(HOST_DIR) $(HOST_BIN_DIR)/gpg
-
 TARGETS+=$(HOST_DIR)
+TARGETS+=$(HOST_BIN_DIR)/gpg
+
+DELIVERABLES+=$(HOST_BIN_DIR)/gpg
+
+host:	$(HOST_DIR) $(HOST_BIN_DIR)/gpg
 
 $(HOST_DIR):
 	mkdir -p $(HOST_DIR)
-
-TARGETS+=$(HOST_BIN_DIR)/gpg
 
 $(HOST_BIN_DIR)/gpg:	$(HOST_DIR)/config.h
 	( \
@@ -209,19 +230,20 @@ $(HOST_DIR)/config.h:	$(SOURCE_DIR)/configure
 	)
 
 ################################################################################
-# BUILD/bin
+# BUILD BIN
 ################################################################################
 
 PHONY+=build
 
-build:	$(BUILD_DIR) $(BUILD_BIN_DIR)/gpg
-
 TARGETS+=$(BUILD_DIR)/
+TARGETS+=$(BUILD_BIN_DIR)/gpg
+
+DELIVERABLES+=$(BUILD_BIN_DIR)/gpg
+
+build:	$(BUILD_DIR) $(BUILD_BIN_DIR)/gpg
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-
-TARGETS+=$(BUILD_BIN_DIR)/gpg
 
 $(BUILD_BIN_DIR)/gpg:	$(BUILD_DIR)/config.h
 	( \
@@ -258,26 +280,38 @@ $(BUILD_DIR)/config.h:	$(SOURCE_DIR)/configure
 	)	
 
 ################################################################################
-# HOST/etc
+# HOST ETC
 ################################################################################
 
 TARGETS+=$(HOST_ETC_DIR)
-
-$(HOST_ETC_DIR):
-	mkdir -p $(HOST_ETC_DIR)
-	chmod 700 $(HOST_ETC_DIR)
-
 TARGETS+=$(HOST_ETC_DIR)/pubring.gpg
 TARGETS+=$(HOST_ETC_DIR)/pubring.gpg~
 TARGETS+=$(HOST_ETC_DIR)/random_seed
 TARGETS+=$(HOST_ETC_DIR)/secring.gpg
 TARGETS+=$(HOST_ETC_DIR)/trustdb.gpg
+TARGETS+=$(HOST_ETC_DIR)/passphrase.txt
 
-ARTIFACTS+=$(HOST_ETC_DIR)/pubring.gpg
-ARTIFACTS+=$(HOST_ETC_DIR)/pubring.gpg~
-ARTIFACTS+=$(HOST_ETC_DIR)/random_seed
-ARTIFACTS+=$(HOST_ETC_DIR)/secring.gpg
-ARTIFACTS+=$(HOST_ETC_DIR)/trustdb.gpg
+# IT IS REALLY A GOOD IDEA TO PUT THESE DELIVERABLES UNDER VERSION CONTROL OR
+# OTHERWISE BACK THEM UP. You can never generate exactly the same keys, HOST or
+# BUILD, even if you use the same parameters. So it's imperative once you deploy
+# embedded HOSTs in the field that you carefully control the the key rings. Once
+# generated, both the HOST and BUILD key rings should be archived. When
+# generating new HOST keys, where the public key will be imported onto the
+# BUILD key ring, the BUILD key rings should be checked out, the import done,
+# and then checked back in. In addition, there's the security issue of the
+# HOST secret keys to consider, to prevent others from creating their own rogue
+# biscuits. Significant care is called for. Treat the HOST and BUILD keys as
+# you would your HOST root password.
+
+DELIVERABLES+=$(HOST_ETC_DIR)/pubring.gpg
+DELIVERABLES+=$(HOST_ETC_DIR)/pubring.gpg~
+DELIVERABLES+=$(HOST_ETC_DIR)/random_seed
+DELIVERABLES+=$(HOST_ETC_DIR)/secring.gpg
+DELIVERABLES+=$(HOST_ETC_DIR)/trustdb.gpg
+DELIVERABLES+=$(HOST_ETC_DIR)/passphrase.txt
+
+$(HOST_ETC_DIR):
+	mkdir -p -m 700 $(HOST_ETC_DIR)
 
 $(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg $(HOST_NAME_FILE) $(HOST_EMAIL_FILE) $(HOST_COMMENT_FILE) $(HOST_PASSPHRASE_FILE)
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
@@ -295,38 +329,44 @@ $(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_
 	) | $(BUILD_BIN_DIR)/gpg --homedir $(HOST_ETC_DIR) --batch --gen-key; \
 	kill $$PID
 
-TARGETS+=$(HOST_ETC_DIR)/passphrase.txt
-
-ARTIFACTS+=$(HOST_ETC_DIR)/passphrase.txt
-
-HOST_ETC+=$(HOST_ETC_DIR)/passphrase.txt
-
 $(HOST_ETC_DIR)/passphrase.txt:	$(HOST_PASSPHRASE_FILE)
 	touch $(HOST_ETC_DIR)/passphrase.txt
 	chmod 600 $(HOST_ETC_DIR)/passphrase.txt
 	cp $(HOST_PASSPHRASE_FILE) $(HOST_ETC_DIR)/passphrase.txt
 
 ################################################################################
-# BUILD/etc
+# BUILD ETC
 ################################################################################
 
 TARGETS+=$(BUILD_ETC_DIR)
-
-$(BUILD_ETC_DIR):
-	mkdir -p $(BUILD_ETC_DIR)
-	chmod 700 $(BUILD_ETC_DIR)
-
 TARGETS+=$(BUILD_ETC_DIR)/pubring.gpg
 TARGETS+=$(BUILD_ETC_DIR)/pubring.gpg~
+TARGETS+=$(BUILD_ETC_DIR)/random_seed
 TARGETS+=$(BUILD_ETC_DIR)/secring.gpg
 TARGETS+=$(BUILD_ETC_DIR)/trustdb.gpg
 TARGETS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
 
-ARTIFACTS+=$(BUILD_ETC_DIR)/pubring.gpg
-ARTIFACTS+=$(BUILD_ETC_DIR)/pubring.gpg~
-ARTIFACTS+=$(BUILD_ETC_DIR)/secring.gpg
-ARTIFACTS+=$(BUILD_ETC_DIR)/trustdb.gpg
-ARTIFACTS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
+# IT IS REALLY A GOOD IDEA TO PUT THESE DELIVERABLES UNDER VERSION CONTROL OR
+# OTHERWISE BACK THEM UP. You can never generate exactly the same keys, HOST or
+# BUILD, even if you use the same parameters. So it's imperative once you deploy
+# embedded HOSTs in the field that you carefully control the the key rings. Once
+# generated, both the HOST and BUILD key rings should be archived. When
+# generating new HOST keys, where the public key will be imported onto the
+# BUILD key ring, the BUILD key rings should be checked out, the import done,
+# and then checked back in. In addition, there's the security issue of the
+# HOST secret keys to consider, to prevent others from creating their own rogue
+# biscuits. Significant care is called for. Treat the HOST and BUILD keys as
+# you would your HOST root password.
+
+DELIVERABLES+=$(BUILD_ETC_DIR)/pubring.gpg
+DELIVERABLES+=$(BUILD_ETC_DIR)/pubring.gpg~
+DELIVERABLES+=$(BUILD_ETC_DIR)/random_seed
+DELIVERABLES+=$(BUILD_ETC_DIR)/secring.gpg
+DELIVERABLES+=$(BUILD_ETC_DIR)/trustdb.gpg
+DELIVERABLES+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
+
+$(BUILD_ETC_DIR):
+	mkdir -p -m 700 $(BUILD_ETC_DIR)
 
 $(BUILD_ETC_DIR)/pubring.gpg $(BUILD_ETC_DIR)/pubring.gpg~ $(BUILD_ETC_DIR)/secring.gpg $(BUILD_ETC_DIR)/trustdb.gpg:	$(BUILD_BIN_DIR)/gpg $(BUILD_NAME_FILE) $(BUILD_EMAIL_FILE) $(BUILD_COMMENT_FILE) $(BUILD_PASSPHRASE_FILE)
 	find /bin /etc /lib /opt /sbin /tmp /usr /var -type f -exec cat {} \; > /dev/null 2>&1 & PID=$$!; \
@@ -344,15 +384,9 @@ $(BUILD_ETC_DIR)/pubring.gpg $(BUILD_ETC_DIR)/pubring.gpg~ $(BUILD_ETC_DIR)/secr
 	) | $(BUILD_BIN_DIR)/gpg --homedir $(BUILD_ETC_DIR) --batch --gen-key; \
 	kill $$PID
 
-TARGETS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
-
-ARTIFACTS+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
-
-BUILD_ETC+=$(BUILD_ETC_DIR)/$(PRODUCT).txt
-
 # Below is where the key exchange between HOST and BUILD takes place. Note that
 # you can't use the $(shell) syntax to pass the recipient identifier to GPG:
-# make evaluates the variable before the file has been created by the prior
+# MAKE evaluates the variable before the file has been created by the prior
 # rules.
 
 $(BUILD_ETC_DIR)/$(PRODUCT).txt:	$(BUILD_BIN_DIR)/gpg $(HOST_ETC_DIR)/pubring.gpg $(HOST_ETC_DIR)/pubring.gpg~ $(HOST_ETC_DIR)/random_seed $(HOST_ETC_DIR)/secring.gpg $(HOST_ETC_DIR)/trustdb.gpg $(HOST_EMAIL_FILE)
@@ -465,10 +499,10 @@ printenv:	printenv.c
 # EXAMPLES
 ################################################################################
 
-PHONY+=cascada cascada-unittests
+PHONY+=cascada cascada-unittests cascada-unittest3.bin cascada-syslog.bin
 
 cascada:
-	make \
+	make all \
 		PRODUCT=cascada \
 		BUILD=i686-pc-linux-gnu \
 		HOST=arm-linux-gnu \
@@ -479,16 +513,28 @@ cascada:
 		HOST_NAME_FILE=${HOME}/biscuit/cascada/host_name.txt \
 		HOST_EMAIL_FILE=${HOME}/biscuit/cascada/host_email.txt \
 		HOST_COMMENT_FILE=${HOME}/biscuit/cascada/host_comment.txt \
-		HOST_PASSPHRASE_FILE=${HOME}/biscuit/cascada/host_passphrase.txt \
-		all
+		HOST_PASSPHRASE_FILE=${HOME}/biscuit/cascada/host_passphrase.txt
 
 cascada-unittests:
 	make unittest1 unittest2 unittest3 PRODUCT=cascada HOST=arm-linux-gnu
+	
+cascada-unittest3.bin:
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	make package PRODUCT=cascada HOST=arm-linux=gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=cascada-unittest3.bin; \
+	rm -rf $$BISDIR
+	
+cascada-syslog.bin:
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	make package PRODUCT=cascada HOST=arm-linux=gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-syslog.sh OUTPUTFILE=cascada-syslog.bin; \
+	rm -rf $$BISDIR
 
-PHONY+=silver silver-unittests
+PHONY+=silver silver-unittests silver-unittest3.bin silver-syslog.bin
 
 silver:
-	make \
+	make all \
 		PRODUCT=silver \
 		BUILD=i686-pc-linux-gnu \
 		HOST=i686-pc-linux-gnu \
@@ -499,11 +545,64 @@ silver:
 		HOST_NAME_FILE=${HOME}/biscuit/silver/host_name.txt \
 		HOST_EMAIL_FILE=${HOME}/biscuit/silver/host_email.txt \
 		HOST_COMMENT_FILE=${HOME}/biscuit/silver/host_comment.txt \
-		HOST_PASSPHRASE_FILE=${HOME}/biscuit/silver/host_passphrase.txt \
-		all
+		HOST_PASSPHRASE_FILE=${HOME}/biscuit/silver/host_passphrase.txt
 
 silver-unittests:
 	make unittest1 unittest2 unittest3 PRODUCT=silver HOST=i686-pc-linux-gnu
+	
+silver-unittest3.bin:
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	make package PRODUCT=silver HOST=i686-pc-linux-gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=silver-unittest3.bin; \
+	rm -rf $$BISDIR
+	
+silver-syslog.bin:
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	make package PRODUCT=silver HOST=i686-pc-linux-gnu INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-syslog.sh OUTPUTFILE=silver-syslog.bin; \
+	rm -rf $$BISDIR
+
+################################################################################
+# BUILD INSTALL
+################################################################################
+
+PHONY+=install
+
+# Probably need to be SU or use SUDO for this.
+
+install:
+	mkdir -p -m 755 $(BUILD_BIN_DIR)
+	install -m 755 $(BUILD_BIN_DIR)/gpg $(INSTALL_BIN)
+	mkdir -p -m 700 $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/pubring.gpg~ $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/secring.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/trustdb.gpg $(INSTALL_ETC)
+	install -m 600 $(BUILD_ETC_DIR)/$(PRODUCT).txt $(INSTALL_ETC)
+
+################################################################################
+# HOST DELIVERY
+################################################################################
+
+PHONY+=delivery
+
+ARTIFACTS+=$(PRODUCT).tgz
+
+delivery:	biscuit
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	mkdir -p -m 755 $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/$(INSTALL_BIN); \
+	install -m 755 biscuit $$BISDIR/$(INSTALL_BIN); \
+	mkdir -p -m 700 $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/random_seed $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/secring.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/trustdb.gpg $$BISDIR/$(INSTALL_ETC); \
+	install -m 600 $(HOST_ETC_DIR)/passphrase.txt $$BISDIR/$(INSTALL_ETC); \
+	tar -C $$BISDIR -cvzf - . > $(PRODUCT).tgz; \
+	rm -rf $$BISDIR
 
 ################################################################################
 # DISTRIBUTION
@@ -523,14 +622,17 @@ dist $(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz:
 # ENTRY POINTS
 ################################################################################
 
-PHONY+=all clean pristine
+PHONY+=all clean clobber pristine
 
 all:	$(TARGETS)
 
 clean:
 	rm -f $(ARTIFACTS)
 	
-pristine:	clean
+clobber:	clean
+	rm -f $(DELIVERABLES)
+	
+pristine:	clobber
 	rm -rf $(PROJECT_DIR)
 
 ################################################################################
