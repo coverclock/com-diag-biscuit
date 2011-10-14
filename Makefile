@@ -3,26 +3,30 @@
 # Licensed under the terms in README.h
 # Chip Overclock <coverclock@diag.com>
 # http://www.diag.com/navigation/downloads/Biscuit
-# 1. Read the comments in this Makefile, which is where most of the
-#    documentation for this project resides.
-# 2. Look at the MAKE targets in the EXAMPLES section, which is where I
-#    generate the BUILD and HOST components for my own use, and make your
-#    own targets, either in this MAKEFILE or in a separate one.
-# 3. Make your own BUILD and HOST components.
-# 4. Run the unittest1, unittest2, and unittest3 unit tests on your BUILD
-#    server.
-# 5. Install the BUILD components on your BUILD server.
-# 6. Deploy the HOST components on your HOST embedded target.
-# 7. Make a unittest3 biscuit for your HOST and run it on your HOST embedded
-#    target manually using the biscuit command.
-# 8. Place the DELIVERABLES for your BUILD and HOST under change control or
-#    otherwise archive them.
-# 9. Try writing your own biscuit scripts.
+# 1.  Download and install the prerequites: GNUPG and any cross compile
+#     toolchain you may need.
+# 2.  Read the comments in this Makefile, which is where most of the
+#     documentation for this project resides.
+# 3.  Change any of the parameters to customize the Makefile to your own
+#     BUILD and HOST requirements.
+# 4.  Make the example components by doing "make all".
+# 5.  Run all of the unit tests by doing "make verify".
+# 6.  Look at the MAKE targets in the EXAMPLES section, which is where I
+#     generate the BUILD and HOST components for my own use, and make your
+#     own targets, either in this MAKEFILE or in a separate one.
+# 7.  Make your own BUILD and HOST components.
+# 8.  Install the BUILD components on your BUILD server.
+# 9.  Deploy the HOST components on your HOST embedded target.
+# 10. Make a unittest3 biscuit for your HOST and run it on your HOST embedded
+#     target manually using the biscuit command.
+# 11. Place the DELIVERABLES for your BUILD and HOST under change control or
+#     otherwise archive them.
+# 12. Try writing your own biscuit scripts.
 ################################################################################
 
 PROJECT=biscuit
 MAJOR=0
-MINOR=1
+MINOR=2
 FIX=0
 
 SVN_URL=svn://graphite/biscuit/trunk/Biscuit
@@ -183,13 +187,13 @@ HOST_ETC_DIR=$(PROJECT_DIR)/host/$(PRODUCT)/$(HOST)/etc
 # LISTS
 ################################################################################
 
-PHONY=# Remake these targets every time regardless of dependencies.
+PHONY=# Make these targets every time regardless of dependencies.
 
-TARGETS=# Make these targets when making all.
+TARGETS=# Make these targets for make all.
 
-ARTIFACTS=# Remove these targets when making clean.
+ARTIFACTS=# Remove these targets for make clean.
 
-DELIVERABLES=# Remove these targets when making clobber.
+DELIVERABLES=# Remove these targets for make clobber.
 
 ################################################################################
 # DEFAULT
@@ -461,10 +465,14 @@ ARTIFACTS+=biscuit-unittest1.bin
 ARTIFACTS+=biscuit-unittest1.dat
 
 unittest1:
+	rm -f ./biscuit-unittest1.bin
+	rm -f ./biscuit-unittest1.dat
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest1.txt OUTPUTFILE=biscuit-unittest1.bin encrypt
 	diff biscuit-unittest1.txt biscuit-unittest1.bin && false || true
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest1.bin OUTPUTFILE=biscuit-unittest1.dat decrypt
 	diff biscuit-unittest1.txt biscuit-unittest1.dat
+	rm ./biscuit-unittest1.bin
+	rm ./biscuit-unittest1.dat
 	echo "unittest1: PASSED"
 
 PHONY+=unittest2
@@ -472,6 +480,7 @@ PHONY+=unittest2
 ARTIFACTS+=biscuit-unittest2.bin
 
 unittest2:
+	rm -f ./biscuit-unittest2.bin
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
 	echo "biscuit-unittest2a" > $$BISDIR/biscuit-unittest2a.txt; \
 	mkdir -p $$BISDIR/subdir; \
@@ -479,16 +488,42 @@ unittest2:
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest2.bin package; \
 	rm -rf $$BISDIR
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTFILE=biscuit-unittest2.bin manifest
+	rm ./biscuit-unittest2.bin
 	echo "unittest2: PASSED"
 
 PHONY+=unittest3
 
+ARTIFACTS+=biscuit.bin
 ARTIFACTS+=biscuit-unittest3.bin
 ARTIFACTS+=biscuit-unittest3.txt
 ARTIFACTS+=biscuit-unittest3a.txt
 ARTIFACTS+=biscuit-unittest3b.txt
 
 unittest3:	biscuit
+	rm -f ./biscuit.bin
+	rm -f ./biscuit-unittest3.txt
+	rm -f ./biscuit-unittest3a.txt
+	rm -f ./biscuit-unittest3b.txt
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
+	rm -rf $$BISDIR
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit
+	test -f ./biscuit-unittest3.txt
+	test -f ./biscuit-unittest3a.txt
+	test -f ./biscuit-unittest3b.txt
+	rm ./biscuit.bin
+	rm ./biscuit-unittest3.txt
+	rm ./biscuit-unittest3a.txt
+	rm ./biscuit-unittest3b.txt
+	echo "unittest3: PASSED"
+
+PHONY+=unittest4
+
+unittest4:	biscuit
+	rm -f ./biscuit-unittest3.bin
 	rm -f ./biscuit-unittest3.txt
 	rm -f ./biscuit-unittest3a.txt
 	rm -f ./biscuit-unittest3b.txt
@@ -498,11 +533,70 @@ unittest3:	biscuit
 	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
 	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest3.bin package; \
 	rm -rf $$BISDIR
-	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit biscuit-unittest3.bin
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit -f biscuit-unittest3.bin
 	test -f ./biscuit-unittest3.txt
 	test -f ./biscuit-unittest3a.txt
 	test -f ./biscuit-unittest3b.txt
-	echo "unittest3: PASSED"
+	rm ./biscuit-unittest3.bin
+	rm ./biscuit-unittest3.txt
+	rm ./biscuit-unittest3a.txt
+	rm ./biscuit-unittest3b.txt
+	echo "unittest4: PASSED"
+
+PHONY+=unittest5
+
+unittest5:	biscuit
+	rm -f ./biscuit.bin
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	TSTDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXX); \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit.bin package; \
+	rm -rf $$BISDIR; \
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit -C $$TSTDIR; \
+	test -f $$TSTDIR/biscuit-unittest3.txt; \
+	test -f $$TSTDIR/biscuit-unittest3a.txt; \
+	test -f $$TSTDIR/biscuit-unittest3b.txt; \
+	rm -rf $$TSTDIR
+	rm ./biscuit.bin
+	echo "unittest5: PASSED"
+
+PHONY+=unittest6
+
+unittest6:	biscuit
+	rm -f biscuit-unittest3.bin
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	TSTDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXX); \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=biscuit-unittest3.bin package; \
+	rm -rf $$BISDIR; \
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit -C $$TSTDIR -f biscuit-unittest3.bin; \
+	test -f $$TSTDIR/biscuit-unittest3.txt; \
+	test -f $$TSTDIR/biscuit-unittest3a.txt; \
+	test -f $$TSTDIR/biscuit-unittest3b.txt; \
+	rm -rf $$TSTDIR
+	rm biscuit-unittest3.bin
+	echo "unittest6: PASSED"
+
+PHONY+=unittest7
+
+unittest7:	biscuit
+	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
+	echo "biscuit-unittest3a" > $$BISDIR/biscuit-unittest3a.txt; \
+	mkdir -p $$BISDIR/subdir; \
+	echo "biscuit-unittest3b" > $$BISDIR/subdir/biscuit-unittest3b.txt; \
+	TSTDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXX); \
+	make BUILD_DIR=$(BUILD_DIR) HOST_DIR=$(HOST_DIR) INPUTDIRECTORY=$$BISDIR INPUTFILE=biscuit-unittest3.sh OUTPUTFILE=$$TSTDIR/biscuit-unittest3.bin package; \
+	rm -rf $$BISDIR; \
+	BISCUITBIN=$(BUILD_BIN_DIR) BISCUITETC=$(HOST_ETC_DIR) ./biscuit -C $$TSTDIR -f $$TSTDIR/biscuit-unittest3.bin; \
+	test -f $$TSTDIR/biscuit-unittest3.txt; \
+	test -f $$TSTDIR/biscuit-unittest3a.txt; \
+	test -f $$TSTDIR/biscuit-unittest3b.txt; \
+	rm -rf $$TSTDIR
+	echo "unittest7: PASSED"
 
 TARGETS+=biscuit
 
@@ -518,6 +612,12 @@ ARTIFACTS+=printenv
 
 printenv:	printenv.c
 	$(HOST_CROSS_COMPILE)gcc -o printenv printenv.c
+	
+
+PHONY+=verify
+
+verify:	unittest1 unittest2 unittest3 unittest4 unittest5 unittest6 unittest7
+	echo "ALL UNIT TESTS PASSED"
 
 ################################################################################
 # BUILD INSTALL
@@ -547,7 +647,18 @@ install:
 
 PHONY+=deploy
 
-# How you get these DELIVERABLES on your own embedded HOST is up to you.
+# This just makes it easier to get everything over to your embedded target
+# in one tarball for testing. How you install everything is up to you. In
+# practice you will probably want to integrate this stuff into your build system
+# for your embedded target. DANGER WILL ROBINSON: be aware that TAR is
+# perfectly happy changing ownership and modes of existing directories based
+# on the contents of the archive. BusyBox TAR in particular has no way I know
+# of to suppress this behavior. If you use TAR to install the tarball into
+# /usr/local on your embedded target via something like
+#  tar -C /usr/local -xvzf example.tgz
+# you might want to do something like
+# 	find /usr/local -exec chown root {} \; -exec chgrp root {} \;
+# afterwards.
 
 # PRODUCT: the product line whose public key is going on the BUILD server.
 # HOST: the GNU architecture string for the HOST embedded target.
@@ -555,17 +666,18 @@ PHONY+=deploy
 # INSTALL_ETC: where the GPG key rings are being installed on the HOST target.
 deploy:	biscuit printenv
 	BISDIR=$(shell mktemp -d /tmp/$(PROJECT).XXXXXXXXXX); \
-	mkdir -p -m 755 $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 biscuit $$BISDIR/$(INSTALL_BIN); \
-	install -m 755 printenv $$BISDIR/$(INSTALL_BIN); \
-	mkdir -p -m 700 $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/random_seed $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/secring.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/trustdb.gpg $$BISDIR/$(INSTALL_ETC); \
-	install -m 600 $(HOST_ETC_DIR)/passphrase.txt $$BISDIR/$(INSTALL_ETC); \
+	chmod 700 $$BISDIR; \
+	mkdir -p -m 755 $$BISDIR/bin; \
+	install -m 755 $(HOST_BIN_DIR)/gpg $$BISDIR/bin; \
+	install -m 755 biscuit $$BISDIR/bin; \
+	install -m 755 printenv $$BISDIR/bin; \
+	mkdir -p -m 700 $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/pubring.gpg~ $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/random_seed $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/secring.gpg $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/trustdb.gpg $$BISDIR/etc/gnupg; \
+	install -m 600 $(HOST_ETC_DIR)/passphrase.txt $$BISDIR/etc/gnupg; \
 	tar -C $$BISDIR -cvzf - . > $(PRODUCT).tgz; \
 	rm -rf $$BISDIR
 

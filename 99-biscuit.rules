@@ -1,0 +1,1 @@
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[b-z][1-9]", RUN+="/bin/mkdir -p /media/%k", RUN+="/bin/mount -t auto -o async,relatime /dev/%k /media/%k", RUN+="/usr/local/bin/biscuitdir /media/%k", RUN+="/bin/umount /media/%k", RUN+="/bin/rmdir /media/%k"
