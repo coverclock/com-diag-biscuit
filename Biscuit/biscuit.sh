@@ -14,9 +14,9 @@
 #  directory to change to prior to executing the biscuit executable ("-C").
 #  Note that even if the default directory is overridden ("-C"), the biscuit
 #  binary package is still expected in the current directory unless it too is
-#  overridden ("-f"). All behavior can be suppressed by the presence of a
-#  /nobiscuit file, which is a way to immunize systems, temporarily or
-#  permanently, against biscuits.
+#  overridden ("-f"); this conforms to how other utilities work. All behavior
+#  can be suppressed by the presence of a /nobiscuit file, which is a way to
+#  immunize a particular system, temporarily or permanently, against biscuits.
 # Install (for example):
 #  install -m 755 biscuit.sh /usr/local/bin
 # Caveats
