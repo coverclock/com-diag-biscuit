@@ -36,7 +36,7 @@ if [ ! -x "${BIS}" ]; then
 fi
 
 DIR="`mktemp -d /tmp/${NAM}.XXXXXXXXXX`"
-trap "umount ${DIR} && rm -rf ${DIR}" 1 2 3 15
+trap "umount ${DIR}; rmdir ${DIR}" 1 2 3 15
 
 if [ ! -d ${DIR} ]; then
     exit 5
@@ -45,11 +45,11 @@ fi
 if mount -t auto -o async,relatime ${DEV} ${DIR}; then
     ( cd ${DIR}; exec ${BIS} </dev/null 1>/dev/null 2>/dev/null )
 else
-    rm -rf ${DIR}
+    rmdir ${DIR}
     exit 6
 fi
 
 umount ${DIR}
-rm -rf ${DIR}
+rmdir ${DIR}
 
 exit 0
