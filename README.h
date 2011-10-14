@@ -48,7 +48,7 @@
 	ABSTRACT
 
 	This file is part of the Digital Aggregates Corporation Biscuit
-	package that implements a reasonably secure mechanism to introduce
+	package that implements a reasonably secure mechanism to execute
 	scripts that run as root into a Linux/GNU system to accomplish tasks
 	such as self-installing software or other maintenance work on embedded
 	systems.
@@ -71,8 +71,7 @@
 
 	INSTALLATION
 
-	Various versions of Biscuit have been built and tested on the following
-	platforms:
+	Versions of Biscuit have been built and tested on the following platforms:
 
 		BeagleBoard xM Revision C
 		armv7l
@@ -85,6 +84,8 @@
 		Ubuntu 10.04 "Lucid Lynx"
 		Linux 2.6.32
 		GCC 4.4.3
+
+	See the Makefile for more information.
 
 *******************************************************************************/
 
