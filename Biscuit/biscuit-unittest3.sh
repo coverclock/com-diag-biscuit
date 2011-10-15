@@ -6,6 +6,7 @@
 # http://www.diag.com/navigation/downloads/Biscuit
 ################################################################################
 NAME="`basename $0`"
+[ $# -eq 0 ] && exec ${NAME} dummy
 echo "${NAME}: begin"
 WORKING="`pwd`"
 SOURCE="`dirname $0`"
