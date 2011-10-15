@@ -26,7 +26,7 @@
 
 PROJECT=biscuit
 MAJOR=0
-MINOR=2
+MINOR=3
 FIX=0
 
 SVN_URL=svn://graphite/biscuit/trunk/Biscuit
@@ -612,7 +612,6 @@ ARTIFACTS+=printenv
 
 printenv:	printenv.c
 	$(HOST_CROSS_COMPILE)gcc -o printenv printenv.c
-	
 
 PHONY+=verify
 
