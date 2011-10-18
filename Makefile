@@ -29,7 +29,7 @@ MAJOR=0
 MINOR=3
 FIX=0
 
-SVN_URL=svn://graphite/biscuit/trunk/Biscuit
+SVN_URL=svn://graphite/$(PROJECT)/trunk/Biscuit
 HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
 
 ################################################################################
@@ -697,10 +697,10 @@ cascada:
 		HOST_CROSS_COMPILE=arm-none-linux-gnueabi- \
 		BUILD_TOOLCHAIN_DIR=/usr/bin \
 		HOST_TOOLCHAIN_DIR=/opt/arm-2011.03 \
-		HOST_NAME_FILE=${HOME}/biscuit/cascada/host_name.txt \
-		HOST_EMAIL_FILE=${HOME}/biscuit/cascada/host_email.txt \
-		HOST_COMMENT_FILE=${HOME}/biscuit/cascada/host_comment.txt \
-		HOST_PASSPHRASE_FILE=${HOME}/biscuit/cascada/host_passphrase.txt
+		HOST_NAME_FILE=${HOME}/projects/biscuit/cascada/host_name.txt \
+		HOST_EMAIL_FILE=${HOME}/projects/biscuit/cascada/host_email.txt \
+		HOST_COMMENT_FILE=${HOME}/projects/biscuit/cascada/host_comment.txt \
+		HOST_PASSPHRASE_FILE=${HOME}/projects/biscuit/cascada/host_passphrase.txt
 
 cascada-unittests:
 	make unittest1 unittest2 unittest3 PRODUCT=cascada HOST=arm-linux-gnu
@@ -734,10 +734,10 @@ silver:
 		HOST_CROSS_COMPILE= \
 		BUILD_TOOLCHAIN_DIR=/usr/bin \
 		HOST_TOOLCHAIN_DIR=/usr/bin \
-		HOST_NAME_FILE=${HOME}/biscuit/silver/host_name.txt \
-		HOST_EMAIL_FILE=${HOME}/biscuit/silver/host_email.txt \
-		HOST_COMMENT_FILE=${HOME}/biscuit/silver/host_comment.txt \
-		HOST_PASSPHRASE_FILE=${HOME}/biscuit/silver/host_passphrase.txt
+		HOST_NAME_FILE=${HOME}/projects/biscuit/silver/host_name.txt \
+		HOST_EMAIL_FILE=${HOME}/projects/biscuit/silver/host_email.txt \
+		HOST_COMMENT_FILE=${HOME}/projects/biscuit/silver/host_comment.txt \
+		HOST_PASSPHRASE_FILE=${HOME}/projects/biscuit/silver/host_passphrase.txt
 
 silver-unittests:
 	make unittest1 unittest2 unittest3 PRODUCT=silver HOST=i686-pc-linux-gnu
