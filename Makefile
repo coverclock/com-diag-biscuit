@@ -27,7 +27,7 @@
 PROJECT=biscuit
 MAJOR=0
 MINOR=3
-FIX=0
+FIX=1
 
 SVN_URL=svn://graphite/$(PROJECT)/trunk/Biscuit
 HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
