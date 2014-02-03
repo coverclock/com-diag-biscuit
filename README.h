@@ -53,7 +53,7 @@
 	self-installing software or other maintenance work on embedded systems.
 	Biscuit is based on work done by the author for one of the Corporation's
 	clients, but is a complete clean room reimplementation that is much superior
-	and more secure than that prior commercial implementation.
+	than that prior commercial implementation.
 
 	This software is an original work of its author(s).
 
