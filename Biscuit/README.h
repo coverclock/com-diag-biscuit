@@ -47,11 +47,13 @@
 
 	ABSTRACT
 
-	This file is part of the Digital Aggregates Corporation Biscuit
-	package that implements a reasonably secure mechanism to execute
-	scripts that run as root into a Linux/GNU system to accomplish tasks
-	such as self-installing software or other maintenance work on embedded
-	systems.
+	This file is part of the Digital Aggregates Corporation Biscuit package.
+	Biscuit implements a reasonably secure mechanism to execute scripts that
+	run as root into a Linux/GNU system to accomplish tasks such as
+	self-installing software or other maintenance work on embedded systems.
+	Biscuit is based on work done by the author for one of the Corporation's
+	clients, but is a complete clean room reimplementation that is much superior
+	and more secure than that prior commercial implementation.
 
 	This software is an original work of its author(s).
 
