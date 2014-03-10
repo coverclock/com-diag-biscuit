@@ -31,6 +31,7 @@ FIX=1
 
 SVN_URL=svn://graphite/$(PROJECT)/trunk/Biscuit
 HTTP_URL=http://www.diag.com/navigation/downloads/Biscuit.html
+GIT_URL=https://github.com/coverclock/com-diag-$(PROJECT)
 
 ################################################################################
 # PREREQUISITES
@@ -771,6 +772,20 @@ dist $(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz:
 	svn export $(SVN_URL) $$BISDIR/$(PROJECT)-$(MAJOR).$(MINOR).$(FIX); \
 	tar -C $$BISDIR -cvzf - $(PROJECT)-$(MAJOR).$(MINOR).$(FIX) > $(PROJECT)-$(MAJOR).$(MINOR).$(FIX).tgz; \
 	rm -rf $$BISDIR
+
+PHONY+=commit dcommit push origin
+
+commit:
+	git commit .
+
+dcommit:
+	git svn dcommit
+
+push:
+	git push origin master
+
+origin:
+	git remote add origin $(GIT_URL)
 
 ################################################################################
 # ENTRY POINTS
